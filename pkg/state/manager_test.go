@@ -335,49 +335,80 @@ func TestMManager_SerializeHelmValues(t *testing.T) {
 	tests := []struct {
 		name         string
 		HelmValues   string
-		HelmDefaults string // is discarded by the function
+		HelmDefaults string
 		wantErr      bool
 		before       VersionedState
 		expected     VersionedState
 	}{
 		{
-			name:       "basic test",
-			HelmValues: "abc123",
+			name:         "new",
+			HelmValues:   `{"value": "abc123"}`,
+			HelmDefaults: `{"value": "abc123"}`,
 			before: VersionedState{
 				V1: &V1{},
 			},
 			expected: VersionedState{
 				V1: &V1{
-					HelmValues: "abc123",
+					HelmValues:         `{"value": "abc123"}`,
+					HelmValuesDefaults: `{"value": "abc123"}`,
+					HelmValuesPatch:    `[]`,
 				},
 			},
 		},
 		{
-			name:       "no wipe",
-			HelmValues: "abc123",
+			name:         "no changes",
+			HelmValues:   `{"value": "xyz789"}`,
+			HelmDefaults: `{"value": "abc123"}`,
 			before: VersionedState{
 				V1: &V1{
-					ChartRepoURL: "abc123_",
+					HelmValues:         `{"value": "xyz789"}`,
+					HelmValuesDefaults: `{"value": "abc123"}`,
+					HelmValuesPatch:    `[{"op":"replace","path":"/value","value":"xyz789"}]`,
 				},
 			},
 			expected: VersionedState{
 				V1: &V1{
-					HelmValues:   "abc123",
-					ChartRepoURL: "abc123_",
+					HelmValues:         `{"value": "xyz789"}`,
+					HelmValuesDefaults: `{"value": "abc123"}`,
+					HelmValuesPatch:    `[{"op":"replace","path":"/value","value":"xyz789"}]`,
 				},
 			},
 		},
 		{
-			name:       "no wipe, but still override",
-			HelmValues: "xyz789",
+			name:         "user changes",
+			HelmValues:   `{"value": "xyz789"}`,
+			HelmDefaults: `{"value": "abc123"}`,
 			before: VersionedState{
 				V1: &V1{
-					HelmValues: "abc123",
+					HelmValues:         `{"value": "abc123"}`,
+					HelmValuesDefaults: `{"value": "abc123"}`,
+					HelmValuesPatch:    `[]`,
 				},
 			},
 			expected: VersionedState{
 				V1: &V1{
-					HelmValues: "xyz789",
+					HelmValues:         `{"value": "xyz789"}`,
+					HelmValuesDefaults: `{"value": "abc123"}`,
+					HelmValuesPatch:    `[{"op":"replace","path":"/value","value":"xyz789"}]`,
+				},
+			},
+		},
+		{
+			name:         "base changes",
+			HelmValues:   `{"value": "xyz789"}`,
+			HelmDefaults: `{"value": "def456"}`,
+			before: VersionedState{
+				V1: &V1{
+					HelmValues:         `{"value": "xyz789"}`,
+					HelmValuesDefaults: `{"value": "abc123"}`,
+					HelmValuesPatch:    `[{"op":"replace","path":"/value","value":"xyz789"}]`,
+				},
+			},
+			expected: VersionedState{
+				V1: &V1{
+					HelmValues:         `{"value": "xyz789"}`,
+					HelmValuesDefaults: `{"value": "def456"}`,
+					HelmValuesPatch:    `[{"op":"replace","path":"/value","value":"xyz789"}]`,
 				},
 			},
 		},

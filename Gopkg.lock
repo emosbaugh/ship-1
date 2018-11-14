@@ -865,6 +865,14 @@
   revision = "d5012789d6659eeed305f54c1b1542e7b65829e6"
 
 [[projects]]
+  branch = "master"
+  digest = "1:fc2b04b0069d6b10bdef96d278fe20c345794009685ed3c8c7f1a6dc023eefec"
+  name = "github.com/mattbaird/jsonpatch"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "81af80346b1a01caae0cbc27fd3c1ba5b11e189f"
+
+[[projects]]
   digest = "1:d4d17353dbd05cb52a2a52b7fe1771883b682806f68db442b436294926bbfafb"
   name = "github.com/mattn/go-isatty"
   packages = ["."]
@@ -1966,6 +1974,7 @@
     "github.com/docker/docker/pkg/jsonmessage",
     "github.com/docker/go-units",
     "github.com/elazarl/go-bindata-assetfs",
+    "github.com/evanphx/json-patch",
     "github.com/ghodss/yaml",
     "github.com/gin-contrib/cors",
     "github.com/gin-gonic/contrib/static",
@@ -1982,6 +1991,8 @@
     "github.com/hashicorp/go-multierror",
     "github.com/hashicorp/terraform/terraform",
     "github.com/jarcoal/httpmock",
+    "github.com/krishicks/yaml-patch",
+    "github.com/mattbaird/jsonpatch",
     "github.com/mcuadros/go-jsonschema-generator",
     "github.com/mholt/archiver",
     "github.com/mitchellh/cli",

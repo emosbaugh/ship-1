@@ -4,32 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
 )
-
-func TestGetAllKeys(t *testing.T) {
-	t.Run("get all keys", func(t *testing.T) {
-		req := require.New(t)
-
-		req.Equal([]interface{}(nil), getAllKeys(yaml.MapSlice{}))
-
-		m1 := yaml.MapSlice{
-			{Key: "a", Value: 5},
-		}
-		m2 := yaml.MapSlice{
-			{Key: "b", Value: true},
-		}
-		m3 := yaml.MapSlice{
-			{Key: "a", Value: "value"},
-			{Key: "b", Value: false},
-			{Key: "c", Value: nil},
-		}
-		req.Equal(
-			[]interface{}{"a", "b", "c"},
-			getAllKeys(m1, m2, m3),
-		)
-	})
-}
 
 func TestMergeHelmValues(t *testing.T) {
 	tests := []struct {
@@ -40,12 +15,27 @@ func TestMergeHelmValues(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "merge, vendor values only",
-			base:     "",
-			user:     "",
-			vendor:   "#comment line\nkey1: 1 # this is a comment\nkey2: a\n",
-			expected: "#comment line\nkey1: 1 # this is a comment\nkey2: a\n",
+			name: "merge, vendor values only",
+			base: "",
+			user: "",
+			vendor: `key1: 1
+key2:
+  - item1
+deep_key:
+  level1:
+    level2:
+      myvalue: 3
+key3: a`,
+			expected: `key1: 1
+key2:
+  - item1
+deep_key:
+  level1:
+    level2:
+      myvalue: 3
+key3: a`,
 		},
+
 		{
 			name: "merge, vendor and user values",
 			base: `key1: 1
@@ -56,17 +46,10 @@ deep_key:
     level2:
       myvalue: 3
 key3: a`,
-
-			user: `key1: 1
-key2:
-  - item1
-  - item2_added_by_user
-deep_key:
-  level1:
-    level2:
-      myvalue: modified-by-user-5
-key3: a`,
-
+			user: `[` +
+				`{"op":"add","path":"/key2/1","value":"item2_added_by_user"},` +
+				`{"op":"replace","path":"/deep_key/level1/level2/myvalue","value":"modified-by-user-5"}` +
+				`]`,
 			vendor: `key1: 1
 key2:
   - item1
@@ -76,18 +59,28 @@ deep_key:
     level2:
       myvalue: 5
 key3: modified-by-vendor`,
-
-			expected: `key1: 1
-key2:
-- item1
-- item2_added_by_user
-deep_key:
+			expected: `deep_key:
   level1:
     level2:
       myvalue: modified-by-user-5
     newkey: added-by-vendor
+key1: 1
+key2:
+- item1
+- item2_added_by_user
 key3: modified-by-vendor
 `,
+		},
+
+		{
+			name: "merge, vendor value no longer exists",
+			base: `key1: 1
+key2: 2`,
+			user: `[` +
+				`{"op":"replace","path":"/key2","value":"222"}` +
+				`]`,
+			vendor:   `key1: 1`,
+			expected: `key1: 1`,
 		},
 	}
 

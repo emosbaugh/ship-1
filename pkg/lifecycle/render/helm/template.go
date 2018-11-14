@@ -21,6 +21,7 @@ import (
 	"github.com/replicatedhq/ship/pkg/state"
 	"github.com/replicatedhq/ship/pkg/templates"
 	"github.com/replicatedhq/ship/pkg/util"
+	"github.com/replicatedhq/ship/pkg/yamlpatch"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 )
@@ -329,6 +330,7 @@ func (f *LocalTemplater) writeStateHelmValuesTo(dest string, defaultValuesPath s
 		return errors.Wrap(err, "try load state")
 	}
 	helmValues := editState.CurrentHelmValues()
+	helmValuesPatch := editState.CurrentHelmValuesPatch()
 	defaultHelmValues := editState.CurrentHelmValuesDefaults()
 
 	defaultValuesShippedWithChartBytes, err := f.FS.ReadFile(filepath.Join(constants.HelmChartPath, "values.yaml"))
@@ -337,12 +339,21 @@ func (f *LocalTemplater) writeStateHelmValuesTo(dest string, defaultValuesPath s
 	}
 	defaultValuesShippedWithChart := string(defaultValuesShippedWithChartBytes)
 
+	if helmValues != "" && helmValuesPatch == "" {
+		// migrate values to patch for old state files prior to this change
+		p, err := yamlpatch.Generate([]byte(defaultHelmValues), []byte(helmValues))
+		if err != nil {
+			return errors.Wrap(err, "migrate generate helm patch from values")
+		}
+		helmValuesPatch = string(p)
+	}
+
 	if defaultHelmValues == "" {
-		debug.Log("event", "values.load", "message", "No default helm values in state; using helm values from state.")
+		debug.Log("event", "values.load", "message", "No default helm values in state, using vendor values instead.")
 		defaultHelmValues = defaultValuesShippedWithChart
 	}
 
-	mergedValues, err := MergeHelmValues(defaultHelmValues, helmValues, defaultValuesShippedWithChart)
+	mergedValues, err := MergeHelmValues(defaultHelmValues, helmValuesPatch, defaultValuesShippedWithChart)
 	if err != nil {
 		return errors.Wrap(err, "merge helm values")
 	}
@@ -357,7 +368,7 @@ func (f *LocalTemplater) writeStateHelmValuesTo(dest string, defaultValuesPath s
 		return errors.Wrapf(err, "write values.yaml to %s", dest)
 	}
 
-	err = f.StateManager.SerializeHelmValues(mergedValues, string(defaultValuesShippedWithChartBytes))
+	err = f.StateManager.SerializeHelmValues(mergedValues, defaultValuesShippedWithChart)
 	if err != nil {
 		return errors.Wrapf(err, "serialize helm values to state")
 	}

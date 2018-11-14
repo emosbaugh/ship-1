@@ -13,6 +13,7 @@ import (
 	"github.com/replicatedhq/ship/pkg/api"
 	"github.com/replicatedhq/ship/pkg/constants"
 	"github.com/replicatedhq/ship/pkg/patch"
+	"github.com/replicatedhq/ship/pkg/yamlpatch"
 	"github.com/spf13/afero"
 	"github.com/spf13/viper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -143,7 +144,7 @@ func (m *MManager) SerializeContentSHA(contentSHA string) error {
 	return m.serializeAndWriteState(versionedState)
 }
 
-// SerializeHelmValues takes user input helm values and serializes a state file to disk
+// SerializeHelmValues takes user input helm values, generates a json patch, and serializes the state file to disk
 func (m *MManager) SerializeHelmValues(values string, defaults string) error {
 	debug := level.Debug(log.With(m.Logger, "method", "serializeHelmValues"))
 
@@ -155,6 +156,12 @@ func (m *MManager) SerializeHelmValues(values string, defaults string) error {
 	versionedState := currentState.Versioned()
 	versionedState.V1.HelmValues = values
 	versionedState.V1.HelmValuesDefaults = defaults
+
+	patch, err := yamlpatch.Generate([]byte(defaults), []byte(values))
+	if err != nil {
+		return errors.Wrap(err, "generate json patch")
+	}
+	versionedState.V1.HelmValuesPatch = string(patch)
 
 	return m.serializeAndWriteState(versionedState)
 }

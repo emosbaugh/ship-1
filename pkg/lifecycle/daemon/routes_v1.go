@@ -119,7 +119,6 @@ func (d *V1Routes) saveHelmValues(c *gin.Context) {
 
 	chartDefaultValues, err := d.Fs.ReadFile(path.Join(constants.HelmChartPath, "values.yaml"))
 	if err != nil {
-
 		level.Error(d.Logger).Log("event", "values.readDefault.fail")
 		c.AbortWithError(http.StatusInternalServerError, errors.Wrap(err, "read file values.yaml"))
 		return

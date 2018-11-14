@@ -11,6 +11,7 @@ import (
 	"github.com/replicatedhq/ship/pkg/constants"
 	"github.com/replicatedhq/ship/pkg/lifecycle/daemon/daemontypes"
 	"github.com/replicatedhq/ship/pkg/lifecycle/render/helm"
+	"github.com/replicatedhq/ship/pkg/yamlpatch"
 )
 
 func (d *NavcycleRoutes) getStep(c *gin.Context) {
@@ -54,8 +55,18 @@ func (d *NavcycleRoutes) hydrateStep(step daemontypes.Step) (*daemontypes.StepRe
 
 	if step.HelmValues != nil {
 		userValues := currentState.CurrentHelmValues()
+		userPatch := currentState.CurrentHelmValuesPatch()
 		defaultValues := currentState.CurrentHelmValuesDefaults()
 		releaseName := currentState.CurrentReleaseName()
+
+		if userValues != "" && userPatch == "" {
+			// migrate values to patch for old state files prior to this change
+			p, err := yamlpatch.Generate([]byte(defaultValues), []byte(userValues))
+			if err != nil {
+				return nil, errors.Wrap(err, "migrate generate user patch from values")
+			}
+			userPatch = string(p)
+		}
 
 		valuesFileContents, err := d.Fs.ReadFile(path.Join(constants.HelmChartPath, "values.yaml"))
 		if err != nil {
@@ -63,7 +74,7 @@ func (d *NavcycleRoutes) hydrateStep(step daemontypes.Step) (*daemontypes.StepRe
 		}
 		vendorValues := string(valuesFileContents)
 
-		mergedValues, err := helm.MergeHelmValues(defaultValues, userValues, vendorValues)
+		mergedValues, err := helm.MergeHelmValues(defaultValues, userPatch, vendorValues)
 		if err != nil {
 			return nil, errors.Wrap(err, "merge values")
 		}
