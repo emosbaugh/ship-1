@@ -1,6 +1,10 @@
 package yamlpatch
 
-import "reflect"
+import (
+	"reflect"
+
+	yaml "gopkg.in/yaml.v2"
+)
 
 // Node holds a YAML document that has not yet been processed into a NodeMap or
 // NodeSlice
@@ -16,9 +20,43 @@ func NewNode(raw *interface{}) *Node {
 	}
 }
 
+// NewNodeFromMap returns a new Node based on a map[interface{}]interface{}
+func NewNodeFromMap(m map[interface{}]interface{}) *Node {
+	var raw interface{}
+	raw = m
+
+	return &Node{
+		raw: &raw,
+	}
+}
+
+// NewNodeFromSlice returns a new Node based on a []interface{}
+func NewNodeFromSlice(s []interface{}) *Node {
+	var raw interface{}
+	raw = s
+
+	return &Node{
+		raw: &raw,
+	}
+}
+
+// NewNodeFromMapSlice returns a new Node based on a yaml.MapSlice
+func NewNodeFromMapSlice(ms yaml.MapSlice) *Node {
+	var raw interface{}
+	raw = ms
+
+	return &Node{
+		raw: &raw,
+	}
+}
+
 // MarshalYAML implements yaml.Marshaler, and returns the correct interface{}
 // to be marshaled
 func (n *Node) MarshalYAML() (interface{}, error) {
+	if n == nil {
+		return nil, nil
+	}
+
 	if n.container != nil {
 		return n.container, nil
 	}
@@ -34,6 +72,14 @@ func (n *Node) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if err != nil {
 		return err
 	}
+	if _, ok := data.(map[interface{}]interface{}); ok {
+		var ms yaml.MapSlice
+		err := unmarshal(&ms)
+		if err != nil {
+			return err
+		}
+		data = ms
+	}
 
 	n.raw = &data
 	return nil
@@ -41,7 +87,7 @@ func (n *Node) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Empty returns whether the raw value is nil
 func (n *Node) Empty() bool {
-	return *n.raw == nil
+	return n == nil || *n.raw == nil
 }
 
 // Container returns the node as a Container
@@ -66,6 +112,14 @@ func (n *Node) Container() Container {
 			v := rt[k]
 			c[k] = NewNode(&v)
 		}
+	case yaml.MapSlice:
+		c := make(nodeMapSlice, len(rt))
+		n.container = &c
+
+		for i := range rt {
+			item := rt[i]
+			c[i] = yaml.MapItem{Key: item.Key, Value: NewNode(&item.Value)}
+		}
 	}
 
 	return n.container
@@ -74,6 +128,10 @@ func (n *Node) Container() Container {
 // Equal compares the values of the raw interfaces that the YAML was
 // unmarshaled into
 func (n *Node) Equal(other *Node) bool {
+	if n == nil {
+		return other == nil
+	}
+
 	return reflect.DeepEqual(*n.raw, *other.raw)
 }
 

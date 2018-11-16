@@ -837,12 +837,13 @@
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
 
 [[projects]]
-  digest = "1:1968f2f943a320bdbb0b90880ecec6b32cfa91b3b0ec8c216281822a20b3ba93"
+  branch = "preserve-map-keys-order"
+  digest = "1:8c4e8a3a3daacb89cda9166e9310b6ccd4b5b507fa41304537f124a0229002b8"
   name = "github.com/krishicks/yaml-patch"
   packages = ["."]
   pruneopts = "UT"
-  revision = "83cc9ac50becbbfafb86a89167f3bc5372e8e530"
-  version = "v0.0.10"
+  revision = "1f9790def353dca72ebb6a5e1e1408803bf6cc1b"
+  source = "https://github.com/emosbaugh/yaml-patch.git"
 
 [[projects]]
   digest = "1:38c6c0068711ac95a80ba4d5d8cf86b5b066cc6d74ddd1e007d4d3eb45751894"
@@ -1974,7 +1975,6 @@
     "github.com/docker/docker/pkg/jsonmessage",
     "github.com/docker/go-units",
     "github.com/elazarl/go-bindata-assetfs",
-    "github.com/evanphx/json-patch",
     "github.com/ghodss/yaml",
     "github.com/gin-contrib/cors",
     "github.com/gin-gonic/contrib/static",

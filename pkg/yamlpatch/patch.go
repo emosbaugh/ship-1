@@ -1,31 +1,21 @@
 package yamlpatch
 
 import (
-	"github.com/ghodss/yaml"
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	yamlpatch "github.com/krishicks/yaml-patch"
-	"github.com/pkg/errors"
 )
 
-func Generate(a, b []byte) ([]byte, error) {
-	aJSON, err := yaml.YAMLToJSON(a)
-	if err != nil {
-		return nil, errors.Wrap(err, "yaml to json a")
+// ApplyPatchNonStrict will apply ops one at a time ignoring errors
+func ApplyPatchNonStrict(p yamlpatch.Patch, doc []byte, logger log.Logger) ([]byte, error) {
+	for _, op := range p {
+		subpatch := yamlpatch.Patch{op}
+		d, err := subpatch.Apply(doc)
+		if err != nil {
+			level.Warn(logger).Log("op", op.Op, "path", op.Path, "err", err)
+		} else {
+			doc = d
+		}
 	}
-	bJSON, err := yaml.YAMLToJSON(b)
-	if err != nil {
-		return nil, errors.Wrap(err, "yaml to json b")
-	}
-	return jsonGenerate(aJSON, bJSON)
-}
-
-func Apply(doc, patchJSON []byte) ([]byte, error) {
-	patch, err := yaml.JSONToYAML(patchJSON)
-	if err != nil {
-		return nil, errors.Wrap(err, "patch json to yaml")
-	}
-	p, err := yamlpatch.DecodePatch(patch)
-	if err != nil {
-		return nil, errors.Wrap(err, "decode patch")
-	}
-	return p.Apply(doc)
+	return doc, nil
 }

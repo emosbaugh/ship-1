@@ -1,100 +1,63 @@
 package yamlpatch
 
 import (
-	"fmt"
+	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	yaml "gopkg.in/yaml.v2"
+	yamlpatch "github.com/krishicks/yaml-patch"
+	"github.com/replicatedhq/ship/pkg/testing/logger"
 )
 
-func TestGenerate(t *testing.T) {
+func TestPatch_Apply(t *testing.T) {
 	type args struct {
-		a []byte
-		b []byte
+		doc []byte
 	}
 	tests := []struct {
 		name    string
+		p       []byte
 		args    args
 		want    []byte
 		wantErr bool
 	}{
 		{
-			name: "basic",
+			name: "missing",
+			p: []byte(`[{"op":"replace","path":"/key1","value":2},` +
+				`{"op":"remove","path":"/key3"},` +
+				`{"op":"add","path":"/key4/key5","value":4}]`),
 			args: args{
-				a: []byte(`a: 100
-b: 200
-c: hello`),
-				b: []byte(`b: 200
-c: goodbye
-d: hello again`),
+				doc: []byte(`key1: 1`),
 			},
-			want: []byte(`[{"op":"remove","path":"/a"},` +
-				`{"op":"replace","path":"/c","value":"goodbye"},` +
-				`{"op":"add","path":"/d","value":"hello again"}` +
-				`]`),
+			want: []byte("key1: 2\n"),
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := Generate(tt.args.a, tt.args.b)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Generate() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			assertYAMLEq(t, string(tt.want), string(got))
-		})
-	}
-}
 
-func TestApply(t *testing.T) {
-	type args struct {
-		doc       []byte
-		patchJSON []byte
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    []byte
-		wantErr bool
-	}{
 		{
-			name: "basic",
+			name: "maintain order",
+			p: []byte(`[{"op":"replace","path":"/key2","value":2},` +
+				`{"op":"replace","path":"/key5","value":5},` +
+				`{"op":"add","path":"/key1/key6","value":7},` +
+				`{"op":"remove","path":"/key1/key4"}]`),
 			args: args{
-				doc: []byte(`a: 100
-b: 200
-c: hello`),
-				patchJSON: []byte(`[{"op":"replace","path":"/c","value":"goodbye"},` +
-					`{"op":"add","path":"/d","value":"hello again"},` +
-					`{"op":"remove","path":"/a"}]`),
+				doc: []byte("key5: 1\nkey1:\n  key4: 3\n  key3: 4\nkey2: 5"),
 			},
-			want: []byte(`b: 200
-c: goodbye
-d: hello again`),
+			want: []byte("key5: 5\nkey1:\n  key3: 4\n  key6: 7\nkey2: 2\n"),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Apply(tt.args.doc, tt.args.patchJSON)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Apply() error = %v, wantErr %v", err, tt.wantErr)
+			p, err := yamlpatch.DecodePatch(tt.p)
+			if err != nil {
+				t.Errorf("DecodePatch() error = %v", err)
 				return
 			}
-			assertYAMLEq(t, string(tt.want), string(got))
+			log := &logger.TestLogger{T: t}
+			got, err := ApplyPatchNonStrict(p, tt.args.doc, log)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Patch.Apply() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Patch.Apply() = %v, want %v", string(got), string(tt.want))
+			}
 		})
 	}
-}
-
-func assertYAMLEq(t assert.TestingT, expected string, actual string, msgAndArgs ...interface{}) bool {
-	var expectedYAMLAsInterface, actualYAMLAsInterface interface{}
-
-	if err := yaml.Unmarshal([]byte(expected), &expectedYAMLAsInterface); err != nil {
-		return assert.Fail(t, fmt.Sprintf("Expected value ('%s') is not valid yaml.\nYAML parsing error: '%s'", expected, err.Error()), msgAndArgs...)
-	}
-
-	if err := yaml.Unmarshal([]byte(actual), &actualYAMLAsInterface); err != nil {
-		return assert.Fail(t, fmt.Sprintf("Input ('%s') needs to be valid yaml.\nYAML parsing error: '%s'", actual, err.Error()), msgAndArgs...)
-	}
-
-	return assert.Equal(t, expectedYAMLAsInterface, actualYAMLAsInterface, msgAndArgs...)
 }

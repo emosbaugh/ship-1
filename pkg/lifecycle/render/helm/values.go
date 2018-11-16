@@ -1,16 +1,17 @@
 package helm
 
 import (
+	"github.com/go-kit/kit/log"
 	"github.com/pkg/errors"
 	"github.com/replicatedhq/ship/pkg/yamlpatch"
 )
 
-// Merges user edited values from state file and vendor values from upstream Helm repo.
-// base is the original config from state
-// user is the jsonpatch from state
-// vendor is the new config from current chart
-// Value priorities: user, vendor, base
-func MergeHelmValues(baseValues, userPatch, vendorValues string) (string, error) {
+// MergeHelmValues merges user edited values from state file and vendor values from upstream Helm
+// repo.
+// baseValues is the original config from state
+// vendorValues is the new config from current chart
+// userPatch is the jsonpatch from state
+func MergeHelmValues(baseValues, vendorValues, userPatch string, logger log.Logger) (string, error) {
 	var merged []byte
 	if vendorValues != "" {
 		merged = []byte(vendorValues)
@@ -20,7 +21,7 @@ func MergeHelmValues(baseValues, userPatch, vendorValues string) (string, error)
 
 	if userPatch != "" {
 		var err error
-		merged, err = yamlpatch.Apply(merged, []byte(userPatch))
+		merged, err = yamlpatch.Apply(merged, []byte(userPatch), logger)
 		if err != nil {
 			return "", errors.Wrapf(err, "apply user json patch")
 		}

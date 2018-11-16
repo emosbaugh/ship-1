@@ -353,7 +353,7 @@ func (f *LocalTemplater) writeStateHelmValuesTo(dest string, defaultValuesPath s
 		defaultHelmValues = defaultValuesShippedWithChart
 	}
 
-	mergedValues, err := MergeHelmValues(defaultHelmValues, helmValuesPatch, defaultValuesShippedWithChart)
+	mergedValues, err := MergeHelmValues(defaultHelmValues, defaultValuesShippedWithChart, helmValuesPatch, f.Logger)
 	if err != nil {
 		return errors.Wrap(err, "merge helm values")
 	}

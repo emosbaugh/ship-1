@@ -74,6 +74,11 @@ ignored = [
   name = "github.com/ghodss/yaml"
   version = "1.0.0"
 
+[[override]]
+  name = "github.com/krishicks/yaml-patch"
+  branch = "preserve-map-keys-order"
+  source = "https://github.com/emosbaugh/yaml-patch.git"
+
 
 # Overrides for Kustomize & Helm
 [[constraint]]
